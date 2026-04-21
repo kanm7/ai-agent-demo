@@ -2,12 +2,6 @@
 
 本项目是一个基于Spring AI的AI Agent应用（**纯Demo，仅学习用途**），集成了 RAG 检索增强生成、Function Calling 工具调用、MCP 协议、SubAgent 子代理、Skill 技能系统等核心能力。本文将从六个核心模块出发，深入剖析其架构设计和实现细节。
 
-## **代码仓库**
-
-https://code.alibaba-inc.com/zoujuexian.zjx/aiagentlearn
-
-git clone git@gitlab.alibaba-inc.com:zoujuexian.zjx/aiagentlearn.git
-
 ## **环境要求**
 
 - Java 21+
