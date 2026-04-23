@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.0.5</version>
+        <version>3.4.3</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.zoujuexian</groupId>
@@ -28,7 +28,7 @@
     </scm>
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>2.0.0-M4</spring-ai.version>
+        <spring-ai.version>1.1.2</spring-ai.version>
     </properties>
 
     <dependencyManagement>
@@ -70,6 +70,16 @@
         <dependency>
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+        </dependency>
+
+        <!-- Spring Retry（Spring AI 重试机制支持） -->
+        <dependency>
+            <groupId>org.springframework.retry</groupId>
+            <artifactId>spring-retry</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-aspects</artifactId>
         </dependency>
 
         <dependency>

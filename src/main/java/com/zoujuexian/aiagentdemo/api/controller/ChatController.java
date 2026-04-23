@@ -11,6 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * AI Agent 对话接口
  */
@@ -46,6 +49,7 @@ public class ChatController {
      * 与 Agent 流式对话（SSE）
      * <p>
      * 使用 ServerSentEvent 明确控制 SSE 数据格式，避免 Spring 默认 JSON 序列化带引号。
+     * 通过累积 token 到句子边界，改善终端显示效果。
      */
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatStream(@RequestBody ChatRequest request) {
@@ -55,9 +59,16 @@ public class ChatController {
 
         String sessionId = resolveSessionId(request.getSessionId());
         return agentCore.chatStream(sessionId, request.getMessage())
-                .map(token -> ServerSentEvent.<String>builder()
-                        .data(token.replace("\n", "\\n"))
-                        .build());
+                .bufferUntil(token -> {
+                    // 遇到句子边界或累积足够长度时发送
+                    return token.matches(".*[。！？，,\\.!?]$") || token.length() >= 20;
+                })
+                .map(tokens -> {
+                    String combined = String.join("", tokens);
+                    return ServerSentEvent.<String>builder()
+                            .data(combined.replace("\n", "\\n"))
+                            .build();
+                });
     }
 
     /**

@@ -63,8 +63,7 @@ curl -X POST http://localhost:8080/api/chat \
   -H "Content-Type: application/json" \
   -d '{"message": "你好，介绍一下你的能力", "sessionId": "test-001"}'
 # 流式对话（SSE）
-curl -X POST http://localhost:8080/api/chat/stream \
-  -H "Content-Type: application/json" \
+curl -X POST http://localhost:8080/api/chat/stream -H "Content-Type: application/json" -d "{\"message\": \"你好，介绍一下你的能力\", \"sessionId\": \"test-001\"}"
 ```
 
 # **一、核心编排器：AgentCore**

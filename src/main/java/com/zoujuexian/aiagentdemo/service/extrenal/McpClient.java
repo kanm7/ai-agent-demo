@@ -88,23 +88,31 @@ public class McpClient {
         String serverVersion = initResult.serverInfo().version();
         System.out.println("[MCP Client] 已连接到: " + serverName + " v" + serverVersion);
 
-        SyncMcpToolCallbackProvider toolCallbackProvider = SyncMcpToolCallbackProvider.builder()
-                .mcpClients(mcpClient)
-                .build();
-
-        ToolCallback[] rawCallbacks = toolCallbackProvider.getToolCallbacks();
+        ToolCallback[] toolCallbacks;
         List<String> toolNames = new ArrayList<>();
-        ToolCallback[] toolCallbacks = new ToolCallback[rawCallbacks.length];
 
-        for (int i = 0; i < rawCallbacks.length; i++) {
-            ToolCallback original = rawCallbacks[i];
-            toolNames.add(original.getToolDefinition().name());
-            System.out.println("  - " + original.getToolDefinition().name()
-                    + ": " + original.getToolDefinition().description());
-            // 包装日志代理
-            toolCallbacks[i] = wrapWithLogging(original);
+        try {
+            SyncMcpToolCallbackProvider toolCallbackProvider = SyncMcpToolCallbackProvider.builder()
+                    .mcpClients(mcpClient)
+                    .build();
+
+            ToolCallback[] rawCallbacks = toolCallbackProvider.getToolCallbacks();
+            toolCallbacks = new ToolCallback[rawCallbacks.length];
+
+            for (int i = 0; i < rawCallbacks.length; i++) {
+                ToolCallback original = rawCallbacks[i];
+                toolNames.add(original.getToolDefinition().name());
+                System.out.println("  - " + original.getToolDefinition().name()
+                        + ": " + original.getToolDefinition().description());
+                // 包装日志代理
+                toolCallbacks[i] = wrapWithLogging(original);
+            }
+            System.out.println("[MCP Client] 发现 " + toolCallbacks.length + " 个远程工具");
+        } catch (Exception exception) {
+            System.err.println("[MCP Client] 获取工具列表失败: " + exception.getMessage());
+            System.err.println("[MCP Client] 将继续使用空工具列表，连接保持有效");
+            toolCallbacks = new ToolCallback[0];
         }
-        System.out.println("[MCP Client] 发现 " + toolCallbacks.length + " 个远程工具");
 
         clientsByUrl.put(serverUrl, mcpClient);
         toolCallbacksByUrl.put(serverUrl, Arrays.asList(toolCallbacks));
@@ -121,10 +129,13 @@ public class McpClient {
     private McpSyncClient connectWithStreamableHttp(String serverUrl) {
         URI uri = URI.create(serverUrl);
         String baseUri = uri.getScheme() + "://" + uri.getAuthority();
-        String endpoint = uri.getRawPath();
-        if (uri.getRawQuery() != null) {
-            endpoint += "?" + uri.getRawQuery();
+        String endpoint = uri.getPath();
+        // 保留查询参数
+        if (uri.getQuery() != null) {
+            endpoint += "?" + uri.getQuery();
         }
+
+        System.out.println("[MCP Client] Streamable HTTP - BaseURI: " + baseUri + ", Endpoint: " + endpoint);
 
         HttpClientStreamableHttpTransport transport = HttpClientStreamableHttpTransport.builder(baseUri)
                 .endpoint(endpoint)
@@ -154,9 +165,17 @@ public class McpClient {
             baseUri = serverUrl.substring(0, sseIndex);
             sseEndpoint = serverUrl.substring(sseIndex);
         } else {
-            baseUri = serverUrl;
+            // 提取基础 URL（不含查询参数）
+            URI uri = URI.create(serverUrl);
+            baseUri = uri.getScheme() + "://" + uri.getAuthority() + uri.getPath();
             sseEndpoint = "/sse";
+            // 如果有查询参数，添加到 endpoint
+            if (uri.getQuery() != null) {
+                sseEndpoint += "?" + uri.getQuery();
+            }
         }
+
+        System.out.println("[MCP Client] SSE - BaseURI: " + baseUri + ", Endpoint: " + sseEndpoint);
 
         HttpClientSseClientTransport transport = HttpClientSseClientTransport.builder(baseUri)
                 .sseEndpoint(sseEndpoint)
