@@ -55,8 +55,11 @@ public class SubAgent {
      */
     public String chat(String userMessage) {
         memory.addMessage(new UserMessage(userMessage));
-
+        
         List<Message> messages = memory.getMessages();
+        /**
+         * 大模型本身不具备记忆功能，聊天历史记录是传给prompt，然后llm在根据prompt进行回答。
+         */
         Prompt prompt = new Prompt(messages, OpenAiChatOptions.builder()
                 .temperature(0.7)
                 .maxTokens(2048)

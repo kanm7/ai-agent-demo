@@ -221,7 +221,7 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
         ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt(prompt);
 
         if (!toolCallbacks.isEmpty()) {
-            requestSpec.toolCallbacks(toolCallbacks.toArray(new ToolCallback[0]));
+            requestSpec.toolCallbacks(toolCallbacks.toArray(new ToolCallback[0])); // 把工具回调注册到请求中，toArray方法的参数的作用是指定数组的元素类型
         }
 
         String response = requestSpec.call().content();

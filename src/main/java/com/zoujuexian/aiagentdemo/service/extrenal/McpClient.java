@@ -323,6 +323,7 @@ public class McpClient {
     }
 
     /**
+     * 这个是保存在前端界面手动添加的mcp服务
      * MCP Server URL 持久化存储
      * <p>
      * 将已添加的 MCP Server URL 列表持久化到 JSON 文件中，
