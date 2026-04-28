@@ -17,13 +17,13 @@ import org.springframework.stereotype.Component;
 public class IntentRecognizer {
 
     private static final String INTENT_PROMPT_TEMPLATE = """
-            你是一个意图分类器。请根据用户的输入，判断该问题是否需要从知识库中检索信息来回答。
+            你是一个意图分类器。请根据用户的输入和当前知识库的主题范围，判断该问题是否需要从知识库中检索信息来回答。
             
-            知识库中包含的内容主要是：Java、Spring Boot、Maven、设计模式等技术文档。
+            当前知识库主要包含以下主题内容：{{knowledgeTopics}}
             
             分类规则：
-            - 如果用户的问题涉及上述技术知识、概念解释、用法说明、最佳实践等，输出：RAG
-            - 如果用户的问题是闲聊、问候、数学计算、天气查询、股票查询、代码编写、翻译等与知识库无关的内容，输出：GENERAL
+            - 如果用户的问题涉及上述知识库主题范围内的技术知识、概念解释、用法说明、最佳实践等，输出：RAG
+            - 如果用户的问题是闲聊、问候、数学计算、天气查询、股票查询、代码编写、翻译等与知识库主题无关的内容，输出：GENERAL
             
             示例：
             用户：Spring Boot 的自动配置原理是什么？ → RAG
@@ -46,11 +46,14 @@ public class IntentRecognizer {
      * 识别用户输入的意图
      *
      * @param userInput 用户输入文本
+     * @param knowledgeTopics 知识库主题描述（动态传入）
      * @return 识别出的意图
      */
-    public Intent recognize(String userInput) {
+    public Intent recognize(String userInput, String knowledgeTopics) {
         try {
-            String prompt = INTENT_PROMPT_TEMPLATE.replace("{{input}}", userInput);
+            String prompt = INTENT_PROMPT_TEMPLATE
+                    .replace("{{knowledgeTopics}}", knowledgeTopics != null ? knowledgeTopics : "通用技术文档")
+                    .replace("{{input}}", userInput);
             String result = chatClient.prompt().user(prompt).call().content();
 
             if (result != null && result.trim().toUpperCase().contains("RAG")) {
@@ -64,5 +67,15 @@ public class IntentRecognizer {
             System.err.println("[意图识别] 识别失败，降级为 GENERAL: " + exception.getMessage());
             return Intent.GENERAL;
         }
+    }
+
+    /**
+     * 识别用户输入的意图（向后兼容方法）
+     *
+     * @param userInput 用户输入文本
+     * @return 识别出的意图
+     */
+    public Intent recognize(String userInput) {
+        return recognize(userInput, "Java、Spring Boot、Maven、设计模式等技术文档");
     }
 }

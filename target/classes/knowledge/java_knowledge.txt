@@ -1,0 +1,231 @@
+Java 基础知识
+
+Java 是一种面向对象的编程语言，由 Sun Microsystems 于 1995 年发布，现由 Oracle 维护。Java 的核心特性包括：平台无关性（"一次编写，到处运行"）、自动内存管理（垃圾回收）、强类型系统和丰富的标准库。
+
+Java 的基本数据类型有 8 种：byte（1字节）、short（2字节）、int（4字节）、long（8字节）、float（4字节）、double（8字节）、char（2字节）、boolean。它们对应的包装类分别是 Byte、Short、Integer、Long、Float、Double、Character、Boolean。自动装箱（Autoboxing）是指基本类型自动转换为包装类，自动拆箱（Unboxing）则相反。Integer 缓存了 -128 到 127 之间的值，因此在此范围内使用 == 比较两个 Integer 对象会返回 true。
+
+String 是不可变对象（immutable），每次修改都会创建新的 String 对象。String 内部使用 char[] 数组（Java 9 之后改为 byte[] 数组）存储字符。字符串常量池（String Pool）用于缓存字符串字面量，避免重复创建。StringBuilder 和 StringBuffer 是可变字符串类，StringBuilder 非线程安全但性能更好，StringBuffer 线程安全但性能稍差。在循环中拼接字符串应使用 StringBuilder 而非 + 运算符。
+
+Java 面向对象编程
+
+Java 面向对象的三大特性是封装、继承和多态。封装通过访问修饰符（private、protected、public、默认）控制成员的可见性。继承使用 extends 关键字，Java 只支持单继承但支持多层继承。多态分为编译时多态（方法重载 Overload）和运行时多态（方法重写 Override）。
+
+抽象类（abstract class）可以包含抽象方法和具体方法，不能被实例化。接口（interface）在 Java 8 之前只能包含抽象方法和常量，Java 8 之后可以包含默认方法（default method）和静态方法。一个类可以实现多个接口。抽象类适合表示"是什么"的关系，接口适合表示"能做什么"的能力。
+
+Java 的内部类分为四种：成员内部类（定义在类内部）、静态内部类（static 修饰）、局部内部类（定义在方法内部）和匿名内部类（没有类名的内部类）。匿名内部类常用于实现接口或抽象类的简短实现，Java 8 之后可以用 Lambda 表达式替代。
+
+Java 泛型
+
+泛型（Generics）是 Java 5 引入的特性，允许在类、接口和方法中使用类型参数。泛型的主要目的是提供编译时类型安全检查，避免运行时的 ClassCastException。泛型在编译后会进行类型擦除（Type Erasure），即泛型信息在运行时不可用。
+
+通配符（Wildcard）用 ? 表示，分为三种：无界通配符 <?>、上界通配符 <? extends T>（只读）和下界通配符 <? super T>（只写）。PECS 原则（Producer Extends, Consumer Super）：如果需要从集合中读取数据，使用 extends；如果需要向集合中写入数据，使用 super。
+
+Java 虚拟机（JVM）
+
+JVM 是 Java 程序运行的基础。Java 源代码首先被编译成字节码（.class 文件），然后由 JVM 解释执行。JVM 负责内存管理、垃圾回收、即时编译（JIT）等核心功能。常见的 JVM 实现有 HotSpot（Oracle）、OpenJ9（IBM）等。
+
+JVM 内存结构分为以下几个区域：
+- 堆（Heap）：存放对象实例，是垃圾回收的主要区域。堆分为新生代（Young Generation）和老年代（Old Generation）。新生代又分为 Eden 区和两个 Survivor 区（S0、S1）。
+- 方法区（Method Area）：存放类的元数据、常量池、静态变量等。Java 8 之后方法区由元空间（Metaspace）实现，使用本地内存而非堆内存。
+- 虚拟机栈（VM Stack）：每个线程私有，存放栈帧（Stack Frame），每个方法调用对应一个栈帧，包含局部变量表、操作数栈、动态链接和方法返回地址。
+- 本地方法栈（Native Method Stack）：为 JNI 调用的本地方法服务。
+- 程序计数器（Program Counter）：每个线程私有，记录当前执行的字节码指令地址。
+
+JVM 垃圾回收
+
+垃圾回收（GC）是 JVM 自动管理内存的机制。判断对象是否可回收的算法有引用计数法和可达性分析法（GC Roots）。GC Roots 包括：虚拟机栈中引用的对象、方法区中静态变量引用的对象、方法区中常量引用的对象、本地方法栈中 JNI 引用的对象。
+
+Java 的引用类型分为四种：强引用（Strong Reference，不会被回收）、软引用（Soft Reference，内存不足时回收）、弱引用（Weak Reference，下次 GC 时回收）和虚引用（Phantom Reference，用于跟踪对象被回收的时机）。
+
+常见的垃圾回收算法有：标记-清除（Mark-Sweep，会产生内存碎片）、标记-复制（Mark-Copy，适用于新生代）、标记-整理（Mark-Compact，适用于老年代）。
+
+常见的垃圾回收器有：
+- Serial GC：单线程收集器，适合小型应用。
+- Parallel GC：多线程收集器，注重吞吐量。
+- CMS（Concurrent Mark Sweep）：以最短停顿时间为目标的收集器，使用标记-清除算法。
+- G1（Garbage First）：面向服务端应用的收集器，将堆划分为多个 Region，兼顾吞吐量和停顿时间。Java 9 之后成为默认收集器。
+- ZGC：低延迟垃圾回收器，停顿时间不超过 10ms，支持 TB 级堆内存。Java 15 之后正式可用。
+
+JVM 类加载机制
+
+类加载过程分为五个阶段：加载（Loading）→ 验证（Verification）→ 准备（Preparation）→ 解析（Resolution）→ 初始化（Initialization）。
+
+双亲委派模型（Parent Delegation Model）：当一个类加载器收到类加载请求时，首先委派给父类加载器处理，只有父类加载器无法加载时才自己加载。类加载器层次为：Bootstrap ClassLoader → Extension ClassLoader → Application ClassLoader → 自定义 ClassLoader。双亲委派模型保证了 Java 核心类库的安全性，防止核心类被篡改。
+
+可以通过继承 ClassLoader 类并重写 findClass() 方法来实现自定义类加载器。打破双亲委派模型的典型场景有：JNDI、JDBC、OSGi、Tomcat 的 WebApp ClassLoader 等。
+
+Java 集合框架
+
+Java 集合框架提供了一套统一的接口和实现类，用于存储和操作对象集合。主要接口包括：
+- List：有序集合，允许重复元素，常用实现有 ArrayList（基于数组）和 LinkedList（基于链表）。
+- Set：不允许重复元素的集合，常用实现有 HashSet（基于哈希表）和 TreeSet（基于红黑树，有序）。
+- Map：键值对映射，常用实现有 HashMap（基于哈希表）和 TreeMap（基于红黑树，按键排序）。
+- Queue：队列接口，常用实现有 LinkedList 和 PriorityQueue（优先队列）。
+
+ArrayList 内部使用 Object[] 数组存储元素，默认初始容量为 10，扩容时增长为原来的 1.5 倍。ArrayList 支持随机访问（O(1)），但插入和删除元素需要移动数组（O(n)）。LinkedList 基于双向链表实现，插入和删除效率高（O(1)），但随机访问效率低（O(n)）。
+
+HashMap 基于数组 + 链表 + 红黑树实现（Java 8 之后）。默认初始容量为 16，负载因子为 0.75，当元素数量超过容量 × 负载因子时触发扩容（容量翻倍）。当链表长度超过 8 且数组长度超过 64 时，链表转换为红黑树；当红黑树节点数小于 6 时退化为链表。HashMap 的 key 可以为 null（存放在数组第 0 个位置），但只能有一个 null key。
+
+HashMap 的 put 流程：1) 计算 key 的 hash 值；2) 根据 hash 值确定数组下标；3) 如果该位置为空，直接插入；4) 如果不为空，判断 key 是否相同（equals），相同则覆盖 value；5) 如果不同，以链表或红黑树的形式追加。
+
+ConcurrentHashMap 是线程安全的 HashMap。Java 7 使用分段锁（Segment），Java 8 之后改为 CAS + synchronized 锁住链表头节点，粒度更细，并发性能更好。
+
+HashSet 内部使用 HashMap 实现，元素作为 HashMap 的 key，value 统一使用一个 PRESENT 常量对象。
+
+Java 多线程与并发
+
+Java 内置了对多线程编程的支持。创建线程的方式有：继承 Thread 类、实现 Runnable 接口、使用 Callable 和 Future、使用线程池（ExecutorService）。
+
+线程的生命周期包括六种状态：NEW（新建）、RUNNABLE（可运行）、BLOCKED（阻塞）、WAITING（等待）、TIMED_WAITING（超时等待）、TERMINATED（终止）。
+
+synchronized 关键字可以修饰方法或代码块，实现互斥锁。修饰实例方法时锁对象是 this，修饰静态方法时锁对象是 Class 对象。synchronized 的底层实现基于 Monitor（监视器锁），通过 monitorenter 和 monitorexit 字节码指令实现。Java 6 之后对 synchronized 进行了优化，引入了偏向锁、轻量级锁和重量级锁的升级机制。
+
+volatile 关键字保证变量的可见性和禁止指令重排序，但不保证原子性。volatile 的典型应用场景是双重检查锁定（DCL）的单例模式。
+
+ReentrantLock 是 java.util.concurrent.locks 包中的可重入锁，相比 synchronized 提供了更灵活的锁操作：支持公平锁和非公平锁、可中断锁、超时获取锁、条件变量（Condition）等。
+
+线程池（ThreadPoolExecutor）的核心参数包括：corePoolSize（核心线程数）、maximumPoolSize（最大线程数）、keepAliveTime（空闲线程存活时间）、workQueue（工作队列）、threadFactory（线程工厂）、handler（拒绝策略）。常见的工作队列有 LinkedBlockingQueue（无界队列）、ArrayBlockingQueue（有界队列）、SynchronousQueue（直接传递）。拒绝策略有 AbortPolicy（抛异常）、CallerRunsPolicy（调用者执行）、DiscardPolicy（丢弃）、DiscardOldestPolicy（丢弃最旧的）。
+
+Executors 工具类提供了几种预定义的线程池：newFixedThreadPool（固定大小）、newCachedThreadPool（可缓存）、newSingleThreadExecutor（单线程）、newScheduledThreadPool（定时任务）。但阿里巴巴 Java 开发手册建议不要使用 Executors 创建线程池，而是通过 ThreadPoolExecutor 手动创建，以避免 OOM 风险。
+
+Java 中的原子操作类位于 java.util.concurrent.atomic 包中，如 AtomicInteger、AtomicLong、AtomicReference 等，底层基于 CAS（Compare And Swap）操作实现无锁并发。CAS 的三个操作数是：内存值 V、预期值 A、新值 B，只有当 V == A 时才将 V 更新为 B。CAS 的 ABA 问题可以通过 AtomicStampedReference 解决。
+
+CountDownLatch 是一个同步工具类，允许一个或多个线程等待其他线程完成操作。CyclicBarrier 允许一组线程互相等待，直到所有线程都到达屏障点。Semaphore 信号量用于控制同时访问某个资源的线程数量。
+
+CompletableFuture 是 Java 8 引入的异步编程工具，支持链式调用和组合多个异步任务。常用方法有 supplyAsync()、thenApply()、thenCompose()、thenCombine()、allOf()、anyOf() 等。
+
+Java 异常处理
+
+Java 使用 try-catch-finally 语句处理异常。异常分为两类：受检异常（Checked Exception，必须显式处理）和非受检异常（Unchecked Exception，即 RuntimeException 及其子类）。Error 表示严重的系统错误（如 OutOfMemoryError、StackOverflowError），通常不应捕获。
+
+异常处理的最佳实践：1) 不要捕获 Exception 或 Throwable，应捕获具体的异常类型；2) 不要用异常控制程序流程；3) finally 块中不要使用 return 语句；4) 使用 try-with-resources（Java 7）自动关闭实现了 AutoCloseable 接口的资源；5) 自定义异常应继承 RuntimeException 或 Exception。
+
+Java IO 与 NIO
+
+Java IO 基于流（Stream）模型，分为字节流（InputStream/OutputStream）和字符流（Reader/Writer）。常用的实现类有 FileInputStream、BufferedReader、PrintWriter 等。装饰器模式是 Java IO 的核心设计模式，通过包装流来增加功能（如缓冲、转换等）。
+
+Java NIO（New IO）是 Java 1.4 引入的非阻塞 IO 框架，核心组件有：
+- Buffer：缓冲区，数据的容器，常用的有 ByteBuffer、CharBuffer 等。Buffer 有三个重要属性：capacity（容量）、position（当前位置）、limit（界限）。
+- Channel：通道，双向的数据传输通道，常用的有 FileChannel、SocketChannel、ServerSocketChannel 等。
+- Selector：选择器，用于监听多个 Channel 的事件（连接、读、写），实现单线程管理多个网络连接（IO 多路复用）。
+
+Java NIO 的 IO 模型是同步非阻塞的。Netty 是基于 Java NIO 的高性能网络框架，广泛用于 RPC 框架（如 Dubbo）、消息中间件（如 RocketMQ）等。
+
+Java 反射
+
+反射（Reflection）允许程序在运行时获取类的信息并操作类的成员。获取 Class 对象的方式有三种：Class.forName("全限定类名")、对象.getClass()、类名.class。通过 Class 对象可以获取构造器（getConstructor）、方法（getMethod）、字段（getField）等，并可以调用私有成员（setAccessible(true)）。
+
+反射的应用场景包括：Spring 的依赖注入（DI）、MyBatis 的 Mapper 代理、JUnit 的测试方法调用、JSON 序列化/反序列化等。反射的缺点是性能较低（比直接调用慢数倍）且破坏了封装性。
+
+Java 注解
+
+注解（Annotation）是 Java 5 引入的元数据机制。元注解（Meta-Annotation）用于定义注解的注解，包括：@Target（指定注解的使用位置）、@Retention（指定注解的保留策略：SOURCE、CLASS、RUNTIME）、@Documented、@Inherited、@Repeatable。
+
+自定义注解使用 @interface 关键字定义。运行时注解（@Retention(RUNTIME)）可以通过反射读取，是 Spring、MyBatis 等框架的核心机制。常见的内置注解有 @Override、@Deprecated、@SuppressWarnings、@FunctionalInterface 等。
+
+Java 8 新特性
+
+Java 8 引入了多项重要特性：
+- Lambda 表达式：允许以函数式风格编写代码，简化匿名内部类的写法。语法为 (参数) -> {方法体}。Lambda 表达式只能用于函数式接口（只有一个抽象方法的接口，用 @FunctionalInterface 标注）。
+- Stream API：提供了对集合进行函数式操作的能力，支持 filter、map、flatMap、reduce、collect 等操作。Stream 操作分为中间操作（惰性求值）和终端操作（触发计算）。parallelStream() 可以实现并行流处理。
+- Optional 类：用于优雅地处理可能为 null 的值，避免 NullPointerException。常用方法有 of()、ofNullable()、isPresent()、ifPresent()、orElse()、orElseGet()、map()、flatMap() 等。
+- 默认方法（Default Method）：接口可以包含有默认实现的方法，使用 default 关键字修饰。
+- 方法引用（Method Reference）：Lambda 表达式的简写形式，语法为 类名::方法名。分为四种：静态方法引用、实例方法引用、特定对象的方法引用、构造方法引用。
+- 新的日期时间 API（java.time）：提供了 LocalDate、LocalTime、LocalDateTime、ZonedDateTime、Instant、Duration、Period 等不可变的日期时间类，替代了线程不安全的 Date 和 Calendar。
+
+Java 9 到 Java 21 重要新特性
+
+Java 9：模块系统（Module System / Jigsaw）、JShell 交互式编程工具、接口私有方法、改进的 Stream API（takeWhile、dropWhile、ofNullable）。
+
+Java 10：局部变量类型推断（var 关键字），仅用于局部变量，编译器自动推断类型。
+
+Java 11（LTS）：String 新方法（isBlank、strip、lines、repeat）、HttpClient 标准化、单文件源码直接运行（java HelloWorld.java）。
+
+Java 14：Switch 表达式（正式特性）、Records（预览）、instanceof 模式匹配（预览）、NullPointerException 增强（显示哪个变量为 null）。
+
+Java 16：Records（正式特性），用于创建不可变的数据载体类，自动生成构造器、getter、equals、hashCode、toString。instanceof 模式匹配（正式特性）。
+
+Java 17（LTS）：密封类（Sealed Classes，正式特性），使用 sealed、permits 关键字限制哪些类可以继承。Switch 模式匹配（预览）。
+
+Java 21（LTS）：虚拟线程（Virtual Threads，正式特性），轻量级线程，由 JVM 调度而非操作系统，适合高并发 IO 密集型场景。结构化并发（预览）。Switch 模式匹配（正式特性）。Record Patterns（正式特性）。
+
+设计模式
+
+设计模式分为三大类：创建型、结构型和行为型。
+
+创建型模式：
+- 单例模式（Singleton）：确保一个类只有一个实例。实现方式有饿汉式（类加载时创建）、懒汉式（首次使用时创建）、双重检查锁定（DCL，需要 volatile）、静态内部类（推荐）、枚举（最安全，防止反射和序列化破坏）。
+- 工厂方法模式（Factory Method）：定义创建对象的接口，由子类决定实例化哪个类。
+- 抽象工厂模式（Abstract Factory）：提供创建一系列相关对象的接口，无需指定具体类。
+- 建造者模式（Builder）：将复杂对象的构建与表示分离，适合参数较多的对象创建。
+- 原型模式（Prototype）：通过复制现有对象来创建新对象，Java 中通过实现 Cloneable 接口和重写 clone() 方法实现。
+
+结构型模式：
+- 代理模式（Proxy）：为其他对象提供代理以控制访问。Java 中有静态代理和动态代理（JDK 动态代理基于接口，CGLIB 基于继承）。Spring AOP 底层使用动态代理实现。
+- 适配器模式（Adapter）：将一个类的接口转换为客户端期望的另一个接口。
+- 装饰器模式（Decorator）：动态地给对象添加额外的职责。Java IO 流就是典型的装饰器模式。
+- 观察者模式（Observer）：定义对象间的一对多依赖关系，当一个对象状态改变时通知所有依赖者。
+
+行为型模式：
+- 策略模式（Strategy）：定义一系列算法，将每个算法封装起来，使它们可以互换。
+- 模板方法模式（Template Method）：定义算法的骨架，将某些步骤延迟到子类实现。
+- 责任链模式（Chain of Responsibility）：将请求沿着处理者链传递，直到有处理者处理它。Servlet Filter、Spring Interceptor 都是责任链模式的应用。
+
+Spring 框架核心
+
+Spring 框架的核心是 IoC（控制反转）和 AOP（面向切面编程）。
+
+IoC 容器负责管理 Bean 的生命周期和依赖关系。Bean 的作用域有：singleton（默认，单例）、prototype（每次请求创建新实例）、request（每个 HTTP 请求一个实例）、session（每个 HTTP 会话一个实例）。
+
+Bean 的生命周期：实例化 → 属性注入 → BeanNameAware → BeanFactoryAware → ApplicationContextAware → BeanPostProcessor.postProcessBeforeInitialization → InitializingBean.afterPropertiesSet → 自定义 init-method → BeanPostProcessor.postProcessAfterInitialization → 使用 → DisposableBean.destroy → 自定义 destroy-method。
+
+依赖注入（DI）的方式有三种：构造器注入（推荐）、Setter 注入、字段注入（@Autowired，不推荐）。@Autowired 默认按类型注入，@Qualifier 指定按名称注入，@Resource 默认按名称注入。
+
+Spring AOP 基于动态代理实现，支持前置通知（@Before）、后置通知（@After）、返回通知（@AfterReturning）、异常通知（@AfterThrowing）和环绕通知（@Around）。切点表达式使用 @Pointcut 定义，常用的有 execution()、annotation() 等。
+
+Spring 事务管理支持编程式事务和声明式事务（@Transactional）。事务传播行为有七种：REQUIRED（默认，加入当前事务或新建）、REQUIRES_NEW（新建事务）、NESTED（嵌套事务）、SUPPORTS、NOT_SUPPORTED、MANDATORY、NEVER。@Transactional 失效的常见原因：方法非 public、自调用（同类方法调用）、异常被捕获未抛出、数据库引擎不支持事务。
+
+Spring Boot 框架
+
+Spring Boot 是基于 Spring 框架的快速开发框架，它通过自动配置和约定优于配置的原则，大幅简化了 Spring 应用的搭建和开发过程。
+
+Spring Boot 的核心特性包括：
+- 内嵌 Web 服务器（Tomcat/Jetty/Undertow），无需部署 WAR 包。
+- 自动配置（Auto-configuration）：通过 @EnableAutoConfiguration 和 spring.factories（Spring Boot 2.x）或 META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports（Spring Boot 3.x）实现。自动配置的原理是通过条件注解（@ConditionalOnClass、@ConditionalOnBean、@ConditionalOnProperty 等）判断是否满足配置条件。
+- Starter 依赖管理：通过 spring-boot-starter-* 聚合常用依赖，简化 pom.xml 配置。
+- Actuator 监控端点：提供 /health、/info、/metrics、/env 等端点，用于应用监控和管理。
+- 配置文件：支持 application.properties 和 application.yml，支持多环境配置（application-{profile}.yml）和配置优先级。
+
+Spring Boot 的启动流程：1) 创建 SpringApplication 对象；2) 加载 spring.factories 中的初始化器和监听器；3) 创建并刷新 ApplicationContext；4) 执行自动配置；5) 启动内嵌 Web 服务器；6) 执行 CommandLineRunner 和 ApplicationRunner。
+
+Spring MVC
+
+Spring MVC 是基于 Servlet 的 Web 框架，核心组件是 DispatcherServlet（前端控制器）。请求处理流程：DispatcherServlet → HandlerMapping（查找 Handler）→ HandlerAdapter（执行 Handler）→ ViewResolver（解析视图）→ 返回响应。
+
+常用注解：@Controller（标记控制器）、@RestController（= @Controller + @ResponseBody）、@RequestMapping（映射请求路径）、@GetMapping/@PostMapping（HTTP 方法映射）、@RequestParam（查询参数）、@PathVariable（路径变量）、@RequestBody（请求体 JSON 反序列化）、@ResponseBody（响应体 JSON 序列化）。
+
+全局异常处理使用 @ControllerAdvice + @ExceptionHandler 实现。拦截器（Interceptor）通过实现 HandlerInterceptor 接口，提供 preHandle、postHandle、afterCompletion 三个回调方法。
+
+Maven 构建工具
+
+Maven 是 Java 项目最常用的构建工具之一。它通过 pom.xml 文件管理项目依赖、构建生命周期和插件。
+
+Maven 的核心概念包括：
+- 坐标（groupId、artifactId、version）：唯一标识一个构件。
+- 依赖管理：通过 <dependencies> 声明依赖，支持依赖传递。依赖范围（scope）有 compile（默认）、provided、runtime、test、system。
+- 依赖冲突解决：Maven 使用最短路径优先和先声明优先原则。可以通过 <exclusions> 排除传递依赖，或在 <dependencyManagement> 中统一管理版本。
+- 仓库：本地仓库（~/.m2/repository）、中央仓库（Maven Central）、私服（如 Nexus）。
+- 生命周期：clean（清理）、default（构建，包含 compile、test、package、install、deploy 等阶段）、site（生成站点文档）。
+- 多模块项目：通过 <modules> 管理子模块，父 POM 使用 <packaging>pom</packaging>。
+
+MyBatis 持久层框架
+
+MyBatis 是一个半自动化的 ORM 框架，通过 XML 或注解将 Java 对象映射到 SQL 语句。与 Hibernate 相比，MyBatis 更灵活，适合复杂 SQL 场景。
+
+MyBatis 的核心组件：SqlSessionFactory（创建 SqlSession）、SqlSession（执行 SQL）、Mapper 接口（定义数据访问方法）、Mapper XML（编写 SQL 语句）。
+
+MyBatis 的缓存机制：一级缓存（SqlSession 级别，默认开启）、二级缓存（Mapper 级别，需要手动开启）。一级缓存在同一个 SqlSession 中有效，执行 update/insert/delete 或 commit 后清空。
+
+动态 SQL 标签：<if>（条件判断）、<choose>/<when>/<otherwise>（多条件分支）、<foreach>（循环）、<where>（自动处理 AND/OR 前缀）、<set>（自动处理逗号）、<trim>（自定义前缀后缀）。
+
+MyBatis 的 # 和 $ 的区别：#{} 使用预编译（PreparedStatement），防止 SQL 注入，适合传值；${} 直接拼接 SQL，存在 SQL 注入风险，适合传表名、列名等动态 SQL 片段。

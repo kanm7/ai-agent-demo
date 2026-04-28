@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agent</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked@15.0.12/marked.min.js" async></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background: #1a1a2e;
+            color: #fff;
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        }
+
+        header h1 {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        header .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        header button {
+            background: rgba(255,255,255,0.15);
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.25);
+            padding: 6px 14px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: background 0.2s;
+        }
+
+        header button:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        .chat-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .message {
+            max-width: 75%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            line-height: 1.6;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        /* 非 assistant 消息保留原始换行 */
+        .message.user, .message.error, .message.system {
+            white-space: pre-wrap;
+        }
+
+        /* Markdown 渲染样式 */
+        .message.assistant p { margin: 0 0 8px 0; }
+        .message.assistant p:last-child { margin-bottom: 0; }
+        .message.assistant h1, .message.assistant h2, .message.assistant h3 {
+            margin: 12px 0 6px 0; font-size: 15px; font-weight: 600;
+        }
+        .message.assistant h1 { font-size: 17px; }
+        .message.assistant h2 { font-size: 16px; }
+        .message.assistant ul, .message.assistant ol {
+            margin: 4px 0 8px 20px; padding: 0;
+        }
+        .message.assistant li { margin: 2px 0; }
+        .message.assistant code {
+            background: #f5f5f5; padding: 1px 5px; border-radius: 3px;
+            font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 13px; color: #d63384;
+        }
+        .message.assistant pre {
+            background: #1e1e1e; color: #d4d4d4; padding: 12px 14px;
+            border-radius: 8px; overflow-x: auto; margin: 8px 0; font-size: 13px;
+            line-height: 1.5;
+        }
+        .message.assistant pre code {
+            background: none; padding: 0; color: inherit; font-size: inherit;
+        }
+        .message.assistant blockquote {
+            border-left: 3px solid #1a73e8; padding: 4px 12px; margin: 8px 0;
+            color: #666; background: #f8f9fa; border-radius: 0 4px 4px 0;
+        }
+        .message.assistant table {
+            border-collapse: collapse; margin: 8px 0; width: 100%; font-size: 13px;
+        }
+        .message.assistant th, .message.assistant td {
+            border: 1px solid #e0e0e0; padding: 6px 10px; text-align: left;
+        }
+        .message.assistant th { background: #f5f5f5; font-weight: 600; }
+        .message.assistant strong { font-weight: 600; }
+        .message.assistant a { color: #1a73e8; text-decoration: none; }
+        .message.assistant a:hover { text-decoration: underline; }
+        .message.assistant hr { border: none; border-top: 1px solid #e0e0e0; margin: 12px 0; }
+
+        .message.user {
+            align-self: flex-end;
+            background: #1a73e8;
+            color: #fff;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant {
+            align-self: flex-start;
+            background: #fff;
+            color: #333;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .message.error {
+            align-self: center;
+            background: #fff2f0;
+            color: #cf1322;
+            border: 1px solid #ffccc7;
+            font-size: 13px;
+        }
+
+        .message.system {
+            align-self: center;
+            background: #e6f7ff;
+            color: #0050b3;
+            border: 1px solid #91d5ff;
+            font-size: 13px;
+        }
+
+        .typing-indicator {
+            align-self: flex-start;
+            padding: 12px 16px;
+            background: #fff;
+            border-radius: 12px;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #999;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: bounce 1.4s infinite ease-in-out;
+        }
+
+        .typing-indicator span:nth-child(1) { animation-delay: 0s; }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+
+        .input-area {
+            padding: 16px 24px;
+            background: #fff;
+            border-top: 1px solid #e8e8e8;
+            display: flex;
+            gap: 12px;
+        }
+
+        .input-area textarea {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid #d9d9d9;
+            border-radius: 8px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: none;
+            outline: none;
+            min-height: 44px;
+            max-height: 120px;
+            transition: border-color 0.2s;
+        }
+
+        .input-area textarea:focus {
+            border-color: #1a73e8;
+        }
+
+        .input-area button {
+            background: #1a73e8;
+            color: #fff;
+            border: none;
+            padding: 0 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .input-area button:hover {
+            background: #1557b0;
+        }
+
+        .input-area button:disabled {
+            background: #a0c4ff;
+            cursor: not-allowed;
+        }
+
+        /* MCP 管理面板 */
+        .mcp-list { list-style: none; margin: 12px 0; max-height: 260px; overflow-y: auto; }
+        .mcp-item {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            padding: 10px 12px; background: #f9f9f9; border-radius: 8px; margin-bottom: 8px;
+            border: 1px solid #eee;
+        }
+        .mcp-item-info { flex: 1; min-width: 0; }
+        .mcp-item-name { font-weight: 600; font-size: 14px; color: #333; }
+        .mcp-item-url { font-size: 12px; color: #999; word-break: break-all; margin-top: 2px; }
+        .mcp-item-tools { font-size: 12px; color: #666; margin-top: 4px; }
+        .mcp-item-tools span { background: #e6f7ff; color: #1890ff; padding: 1px 6px; border-radius: 4px; margin-right: 4px; display: inline-block; margin-top: 2px; }
+        .mcp-item .btn-disconnect {
+            background: #fff2f0; color: #cf1322; border: 1px solid #ffccc7;
+            padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;
+            white-space: nowrap; margin-left: 8px; flex-shrink: 0;
+        }
+        .mcp-item .btn-disconnect:hover { background: #ffccc7; }
+        .mcp-empty { text-align: center; color: #999; padding: 20px 0; font-size: 13px; }
+        .mcp-add { display: flex; gap: 8px; margin-top: 12px; }
+        .mcp-add input { flex: 1; padding: 8px 12px; border: 1px solid #d9d9d9; border-radius: 6px; font-size: 13px; outline: none; }
+        .mcp-add input:focus { border-color: #1a73e8; }
+        .mcp-add button { background: #1a73e8; color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+        .mcp-add button:hover { background: #1557b0; }
+        .mcp-add button:disabled { background: #a0c4ff; cursor: not-allowed; }
+
+        /* 切换模型弹窗 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            padding: 24px;
+            width: 420px;
+            max-width: 90vw;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+        }
+
+        .modal h2 {
+            font-size: 18px;
+            margin-bottom: 16px;
+        }
+
+        .modal label {
+            display: block;
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+
+        .modal input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d9d9d9;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .modal input:focus {
+            border-color: #1a73e8;
+        }
+
+        .modal .modal-actions {
+            margin-top: 20px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .modal .modal-actions button {
+            padding: 8px 20px;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        .modal .btn-cancel {
+            background: #f5f5f5;
+            border: 1px solid #d9d9d9;
+            color: #333;
+        }
+
+        .modal .btn-confirm {
+            background: #1a73e8;
+            border: none;
+            color: #fff;
+        }
+
+        /* Command 命令面板 */
+        .command-panel {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            right: 0;
+            background: #fff;
+            border: 1px solid #e8e8e8;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            box-shadow: 0 -4px 12px rgba(0,0,0,0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+        }
+
+        .command-panel.active {
+            display: block;
+        }
+
+        .command-item {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.15s;
+        }
+
+        .command-item:hover,
+        .command-item.selected {
+            background: #e6f7ff;
+        }
+
+        .command-item .command-name {
+            font-weight: 600;
+            color: #1a73e8;
+        }
+
+        .command-empty {
+            padding: 12px 16px;
+            color: #999;
+            font-size: 13px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>🤖 AI Agent</h1>
+    <div class="actions">
+        <button onclick="clearHistory()">清空对话</button>
+        <button onclick="showMcpModal()">MCP 管理</button>
+        <button onclick="showSwitchModal()">切换模型</button>
+    </div>
+</header>
+
+<div class="chat-container" id="chatContainer">
+    <div class="message system">欢迎使用 AI Agent，支持 RAG、Function Calling、Skill、MCP 能力。</div>
+</div>
+
+<div class="typing-indicator" id="typingIndicator">
+    <span></span><span></span><span></span>
+</div>
+
+<div class="input-area" style="position: relative;">
+    <div class="command-panel" id="commandPanel"></div>
+    <textarea id="messageInput" placeholder="输入消息，Enter 发送，Shift+Enter 换行，/ 唤起命令" rows="1"></textarea>
+    <button id="sendBtn" onclick="sendMessage()">发送</button>
+</div>
+
+<!-- 切换模型弹窗 -->
+<div class="modal-overlay" id="switchModal">
+    <div class="modal">
+        <h2>切换模型</h2>
+        <label>Base URL</label>
+        <input id="modelBaseUrl" placeholder="https://open.bigmodel.cn/api/paas/v4">
+        <label>API Key</label>
+        <input id="modelApiKey" placeholder="your-api-key">
+        <label>Chat 模型</label>
+        <input id="modelChatModel" placeholder="glm-4.6">
+        <label>Embedding 模型（可选）</label>
+        <input id="modelEmbeddingModel" placeholder="embedding-3">
+        <label>Completions Path（可选）</label>
+        <input id="modelCompletionsPath" placeholder="/chat/completions">
+        <label>Embeddings Path（可选）</label>
+        <input id="modelEmbeddingsPath" placeholder="/embeddings">
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeSwitchModal()">取消</button>
+            <button class="btn-confirm" onclick="submitSwitchModel()">确认切换</button>
+        </div>
+    </div>
+</div>
+
+<!-- MCP 管理弹窗 -->
+<div class="modal-overlay" id="mcpModal">
+    <div class="modal" style="width: 520px;">
+        <h2>MCP 服务管理</h2>
+        <div class="mcp-add">
+            <input id="mcpUrlInput" placeholder="输入 MCP Server URL，如 https://mcp-gw.dingtalk.com/server/...">
+            <button id="mcpConnectBtn" onclick="connectMcp()">连接</button>
+        </div>
+        <ul class="mcp-list" id="mcpList">
+            <li class="mcp-empty">加载中...</li>
+        </ul>
+        <div class="modal-actions">
+            <button class="btn-cancel" onclick="closeMcpModal()">关闭</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const chatContainer = document.getElementById('chatContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const typingIndicator = document.getElementById('typingIndicator');
+
+    // 会话 ID：每个页面实例生成唯一 ID，隔离不同客户端的对话记忆
+    let sessionId = generateSessionId();
+
+    function generateSessionId() {
+        return 'sess-' + crypto.randomUUID();
+    }
+
+    // ========== Command 命令面板 ==========
+    const commandPanel = document.getElementById('commandPanel');
+    let commandList = [];
+    let filteredCommands = [];
+    let selectedCommandIndex = -1;
+    let isCommandMode = false;
+
+    // 启动时加载命令列表
+    async function loadCommandList() {
+        try {
+            const response = await fetch('/api/command/list');
+            commandList = await response.json();
+        } catch (error) {
+            console.error('加载命令列表失败:', error);
+        }
+    }
+    loadCommandList();
+
+    function showCommandPanel(filter) {
+        const keyword = filter.toLowerCase();
+        filteredCommands = commandList.filter(name => name.toLowerCase().includes(keyword));
+        selectedCommandIndex = filteredCommands.length > 0 ? 0 : -1;
+
+        if (filteredCommands.length === 0) {
+            commandPanel.innerHTML = '<div class="command-empty">无匹配命令</div>';
+        } else {
+            commandPanel.innerHTML = filteredCommands.map((name, index) =>
+                '<div class="command-item' + (index === 0 ? ' selected' : '') + '" data-index="' + index + '" onclick="selectCommand(' + index + ')">' +
+                '<span class="command-name">/' + name + '</span>' +
+                '</div>'
+            ).join('');
+        }
+        commandPanel.classList.add('active');
+        isCommandMode = true;
+    }
+
+    function hideCommandPanel() {
+        commandPanel.classList.remove('active');
+        isCommandMode = false;
+        selectedCommandIndex = -1;
+    }
+
+    function selectCommand(index) {
+        const name = filteredCommands[index];
+        if (!name) return;
+        messageInput.value = '/' + name + ' ';
+        messageInput.focus();
+        hideCommandPanel();
+    }
+
+    function updateCommandSelection() {
+        const items = commandPanel.querySelectorAll('.command-item');
+        items.forEach((item, index) => {
+            item.classList.toggle('selected', index === selectedCommandIndex);
+        });
+        if (items[selectedCommandIndex]) {
+            items[selectedCommandIndex].scrollIntoView({ block: 'nearest' });
+        }
+    }
+
+    // 自动调整输入框高度 + 命令面板触发
+    messageInput.addEventListener('input', function () {
+        this.style.height = 'auto';
+        this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+
+        const value = this.value;
+        if (value.startsWith('/') && !value.includes(' ')) {
+            showCommandPanel(value.substring(1));
+        } else {
+            hideCommandPanel();
+        }
+    });
+
+    // 键盘导航
+    messageInput.addEventListener('keydown', function (event) {
+        if (isCommandMode && filteredCommands.length > 0) {
+            if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                selectedCommandIndex = (selectedCommandIndex + 1) % filteredCommands.length;
+                updateCommandSelection();
+                return;
+            }
+            if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                selectedCommandIndex = (selectedCommandIndex - 1 + filteredCommands.length) % filteredCommands.length;
+                updateCommandSelection();
+                return;
+            }
+            if (event.key === 'Tab' || (event.key === 'Enter' && !event.shiftKey)) {
+                event.preventDefault();
+                selectCommand(selectedCommandIndex);
+                return;
+            }
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                hideCommandPanel();
+                return;
+            }
+        }
+
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
+            sendMessage();
+        }
+    });
+
+    function renderMarkdown(text) {
+        if (!text) return '';
+        // 延迟检测 marked.js（async 加载可能晚于主脚本）
+        if (!window._markedOk && typeof marked !== 'undefined' && typeof marked.parse === 'function') {
+            try { marked.use({ gfm: true, breaks: true }); } catch (e) {
+                try { marked.setOptions({ gfm: true, breaks: true }); } catch (ignored) {}
+            }
+            window._markedOk = true;
+        }
+        if (window._markedOk) {
+            try { return marked.parse(text); } catch (e) { /* fallback */ }
+        }
+        // 内置简易 Markdown 渲染（不依赖任何外部库）
+        var html = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        html = html.replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>');
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/^### (.+)$/gm, '<h3>$1</h3>');
+        html = html.replace(/^## (.+)$/gm, '<h2>$1</h2>');
+        html = html.replace(/^# (.+)$/gm, '<h1>$1</h1>');
+        html = html.replace(/^- (.+)$/gm, '<li>$1</li>');
+        html = html.split('\n\n').map(function(block) {
+            block = block.trim();
+            if (!block) return '';
+            if (/^<[hpul]/.test(block)) return block;
+            return '<p>' + block.replace(/\n/g, '<br>') + '</p>';
+        }).join('');
+        html = html.replace(/((?:<li>.*?<\/li>\s*)+)/g, '<ul>$1</ul>');
+        return html;
+    }
+
+    function appendMessage(content, type) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'message ' + type;
+        if (type === 'assistant') {
+            messageDiv.innerHTML = renderMarkdown(content);
+        } else {
+            messageDiv.textContent = content;
+        }
+        chatContainer.appendChild(messageDiv);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+    }
+
+    function setLoading(loading) {
+        sendBtn.disabled = loading;
+        messageInput.disabled = loading;
+        typingIndicator.style.display = loading ? 'block' : 'none';
+        if (loading) {
+            chatContainer.appendChild(typingIndicator);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        }
+    }
+
+    async function sendMessage() {
+        const message = messageInput.value.trim();
+        if (!message) return;
+
+        hideCommandPanel();
+        appendMessage(message, 'user');
+        messageInput.value = '';
+        messageInput.style.height = 'auto';
+        setLoading(true);
+
+        // 创建 assistant 消息容器，用于流式追加内容
+        const assistantDiv = document.createElement('div');
+        assistantDiv.className = 'message assistant';
+        chatContainer.appendChild(assistantDiv);
+        let streamRawText = ''; // 累积原始文本，用于 Markdown 渲染
+
+        try {
+            let url, body;
+            const commandMatch = message.match(/^\/(\S+)\s*([\s\S]*)$/);
+
+            if (commandMatch && commandList.includes(commandMatch[1])) {
+                url = '/api/command/execute/stream';
+                body = JSON.stringify({ name: commandMatch[1], input: commandMatch[2].trim(), sessionId });
+            } else {
+                url = '/api/chat/stream';
+                body = JSON.stringify({ message, sessionId });
+            }
+
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: body
+            });
+
+            if (!response.ok) {
+                assistantDiv.remove();
+                appendMessage('请求失败: HTTP ' + response.status, 'error');
+                return;
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let lineBuf = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+
+                lineBuf += decoder.decode(value, { stream: true });
+
+                // 按行处理：找到所有完整的行
+                let newlineIdx;
+                while ((newlineIdx = lineBuf.indexOf('\n')) !== -1) {
+                    const line = lineBuf.substring(0, newlineIdx);
+                    lineBuf = lineBuf.substring(newlineIdx + 1);
+
+                    if (line.startsWith('data:')) {
+                        const content = line.substring(5);
+                        if (content !== '' && content !== ' ') {
+                            // 将后端转义的 \\n 还原为真正的换行符
+                            streamRawText += content.replace(/\\n/g, '\n');
+                        }
+                    }
+                }
+
+                assistantDiv.innerHTML = renderMarkdown(streamRawText);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            // 处理缓冲区中剩余的行
+            if (lineBuf.startsWith('data:')) {
+                const content = lineBuf.substring(5);
+                if (content !== '' && content !== ' ') {
+                    streamRawText += content.replace(/\\n/g, '\n');
+                }
+            }
+
+            // 最终渲染
+            if (streamRawText.trim()) {
+                assistantDiv.innerHTML = renderMarkdown(streamRawText);
+            } else {
+                assistantDiv.textContent = '（空回复）';
+            }
+
+
+        } catch (error) {
+            assistantDiv.remove();
+            appendMessage('网络错误: ' + error.message, 'error');
+        } finally {
+            setLoading(false);
+            messageInput.focus();
+        }
+    }
+
+    async function clearHistory() {
+        try {
+            const response = await fetch('/api/manage/clear-memory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionId })
+            });
+            const data = await response.json();
+
+            // 生成新的 sessionId，开启全新对话
+            sessionId = generateSessionId();
+            chatContainer.innerHTML = '';
+            appendMessage('对话历史已清空，已开启新对话', 'system');
+        } catch (error) {
+            appendMessage('清空失败: ' + error.message, 'error');
+        }
+    }
+
+    function showSwitchModal() {
+        document.getElementById('switchModal').classList.add('active');
+    }
+
+    function closeSwitchModal() {
+        document.getElementById('switchModal').classList.remove('active');
+    }
+
+    async function submitSwitchModel() {
+        const baseUrl = document.getElementById('modelBaseUrl').value.trim();
+        const apiKey = document.getElementById('modelApiKey').value.trim();
+        const chatModel = document.getElementById('modelChatModel').value.trim();
+        const embeddingModel = document.getElementById('modelEmbeddingModel').value.trim();
+        const completionsPath = document.getElementById('modelCompletionsPath').value.trim();
+        const embeddingsPath = document.getElementById('modelEmbeddingsPath').value.trim();
+
+        if (!baseUrl || !apiKey || !chatModel) {
+            alert('Base URL、API Key、Chat 模型不能为空');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/manage/switch-model', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    baseUrl, apiKey, chatModel,
+                    embeddingModel: embeddingModel || null,
+                    completionsPath: completionsPath || null,
+                    embeddingsPath: embeddingsPath || null
+                })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                appendMessage('模型已切换: ' + chatModel, 'system');
+                closeSwitchModal();
+            } else {
+                alert('切换失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('网络错误: ' + error.message);
+        }
+    }
+
+    // ========== MCP 管理 ==========
+    function showMcpModal() {
+        document.getElementById('mcpModal').classList.add('active');
+        loadMcpList();
+    }
+
+    function closeMcpModal() {
+        document.getElementById('mcpModal').classList.remove('active');
+    }
+
+    async function loadMcpList() {
+        const listEl = document.getElementById('mcpList');
+        listEl.innerHTML = '<li class="mcp-empty">加载中...</li>';
+
+        try {
+            const response = await fetch('/api/manage/mcp/list');
+            const servers = await response.json();
+
+            if (servers.length === 0) {
+                listEl.innerHTML = '<li class="mcp-empty">暂无 MCP 服务，请添加</li>';
+                return;
+            }
+
+            listEl.innerHTML = '';
+            for (const server of servers) {
+                const li = document.createElement('li');
+                li.className = 'mcp-item';
+
+                if (server.connected) {
+                    const toolTags = server.toolNames.map(name => '<span>' + name + '</span>').join('');
+                    li.innerHTML =
+                        '<div class="mcp-item-info">' +
+                            '<div class="mcp-item-name"><span style="color:#52c41a;margin-right:4px;">●</span>' + server.name + ' v' + server.version + '</div>' +
+                            '<div class="mcp-item-url">' + server.url + '</div>' +
+                            '<div class="mcp-item-tools">工具: ' + toolTags + '</div>' +
+                        '</div>' +
+                        '<button class="btn-disconnect" onclick="disconnectMcp(\'' + encodeURIComponent(server.url) + '\')">断开</button>';
+                } else {
+                    li.innerHTML =
+                        '<div class="mcp-item-info">' +
+                            '<div class="mcp-item-name"><span style="color:#cf1322;margin-right:4px;">●</span>未连接</div>' +
+                            '<div class="mcp-item-url">' + server.url + '</div>' +
+                        '</div>' +
+                        '<div style="display:flex;gap:4px;">' +
+                            '<button class="btn-disconnect" style="background:#e6f7ff;color:#1890ff;border-color:#91d5ff;" onclick="reconnectMcp(\'' + encodeURIComponent(server.url) + '\')">重连</button>' +
+                            '<button class="btn-disconnect" onclick="disconnectMcp(\'' + encodeURIComponent(server.url) + '\')">移除</button>' +
+                        '</div>';
+                }
+
+                listEl.appendChild(li);
+            }
+        } catch (error) {
+            listEl.innerHTML = '<li class="mcp-empty">加载失败: ' + error.message + '</li>';
+        }
+    }
+
+    async function reconnectMcp(encodedUrl) {
+        const url = decodeURIComponent(encodedUrl);
+        try {
+            const response = await fetch('/api/manage/mcp/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                appendMessage('MCP 服务已重连: ' + url, 'system');
+                loadMcpList();
+            } else {
+                alert('重连失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('网络错误: ' + error.message);
+        }
+    }
+
+    async function connectMcp() {
+        const urlInput = document.getElementById('mcpUrlInput');
+        const connectBtn = document.getElementById('mcpConnectBtn');
+        const url = urlInput.value.trim();
+
+        if (!url) {
+            alert('请输入 MCP Server URL');
+            return;
+        }
+
+        connectBtn.disabled = true;
+        connectBtn.textContent = '连接中...';
+
+        try {
+            const response = await fetch('/api/manage/mcp/connect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                urlInput.value = '';
+                appendMessage('MCP 服务已连接: ' + url, 'system');
+                loadMcpList();
+            } else {
+                alert('连接失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('网络错误: ' + error.message);
+        } finally {
+            connectBtn.disabled = false;
+            connectBtn.textContent = '连接';
+        }
+    }
+
+    async function disconnectMcp(encodedUrl) {
+        const url = decodeURIComponent(encodedUrl);
+        if (!confirm('确定断开 MCP 服务？\n' + url)) return;
+
+        try {
+            const response = await fetch('/api/manage/mcp/disconnect', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ url })
+            });
+            const data = await response.json();
+
+            if (data.success) {
+                appendMessage('MCP 服务已断开: ' + url, 'system');
+                loadMcpList();
+            } else {
+                alert('断开失败: ' + data.error);
+            }
+        } catch (error) {
+            alert('网络错误: ' + error.message);
+        }
+    }
+
+    // 页面加载后聚焦输入框
+    messageInput.focus();
+</script>
+</body>
+</html>

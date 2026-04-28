@@ -197,8 +197,8 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     public String chat(String sessionId, String userInput) {
         ChatMemory memory = getOrCreateMemory(sessionId);
 
-        // 1. 意图识别
-        Intent intent = intentRecognizer.recognize(userInput);
+        // 1. 意图识别（传入知识库主题描述）
+        Intent intent = intentRecognizer.recognize(userInput, ragService.getKnowledgeTopics());
 
         // 2. 如果是 RAG 意图，先检索知识库并注入上下文
         if (intent == Intent.RAG && ragService.isKnowledgeLoaded()) {
@@ -244,8 +244,8 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     public Flux<String> chatStream(String sessionId, String userInput) {
         ChatMemory memory = getOrCreateMemory(sessionId);
 
-        // 1. 意图识别
-        Intent intent = intentRecognizer.recognize(userInput);
+        // 1. 意图识别（传入知识库主题描述）
+        Intent intent = intentRecognizer.recognize(userInput, ragService.getKnowledgeTopics());
 
         // 2. 如果是 RAG 意图，先检索知识库并注入上下文
         if (intent == Intent.RAG && ragService.isKnowledgeLoaded()) {

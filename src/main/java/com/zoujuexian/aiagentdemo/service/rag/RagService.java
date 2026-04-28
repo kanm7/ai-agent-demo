@@ -51,6 +51,7 @@ public class RagService {
     private final LlmReranker llmReranker;
 
     private boolean knowledgeLoaded = false;
+    private String knowledgeTopics = "通用技术文档"; // 默认主题描述
 
     public RagService(
             EmbeddingModel embeddingModel,
@@ -69,15 +70,55 @@ public class RagService {
         );
         this.multiRecaller = new MultiRetriever(retrievers);
         this.llmReranker = new LlmReranker(baseUrl, apiKey, rerankPath, rerankModel);
-        loadKnowledgeBase(KNOWLEDGE_DIR);
+        
+        // 加载知识库并获取文件列表
+        List<Path> textFiles = loadKnowledgeBase(KNOWLEDGE_DIR);
+        
+        // 根据加载的文件名生成主题描述
+        updateKnowledgeTopics(textFiles);
+    }
+
+    /**
+     * 根据加载的知识库文件更新主题描述
+     *
+     * @param textFiles 知识库文件列表
+     */
+    private void updateKnowledgeTopics(List<Path> textFiles) {
+        if (textFiles == null || textFiles.isEmpty()) {
+            this.knowledgeTopics = "通用技术文档";
+            return;
+        }
+
+        StringBuilder topicsBuilder = new StringBuilder();
+        for (int i = 0; i < textFiles.size(); i++) {
+            String fileName = textFiles.get(i).getFileName().toString();
+            // 移除扩展名并转换为更友好的显示名称
+            String topicName = fileName.replace(".txt", "").replace("_", " ");
+            topicsBuilder.append(topicName);
+            if (i < textFiles.size() - 1) {
+                topicsBuilder.append("、");
+            }
+        }
+        this.knowledgeTopics = topicsBuilder.toString();
+        System.out.println("[知识库主题] " + this.knowledgeTopics);
+    }
+
+    /**
+     * 获取知识库的主题描述
+     *
+     * @return 知识库主题描述
+     */
+    public String getKnowledgeTopics() {
+        return knowledgeTopics;
     }
 
     /**
      * 加载知识库目录下的所有 .txt 文件
      *
      * @param knowledgeDir 知识库目录路径（相对于 classpath resources）
+     * @return 加载的文件列表
      */
-    public void loadKnowledgeBase(String knowledgeDir) throws IOException, URISyntaxException {
+    public List<Path> loadKnowledgeBase(String knowledgeDir) throws IOException, URISyntaxException {
         URL resourceUrl = getClass().getClassLoader().getResource(knowledgeDir);
         if (resourceUrl == null) {
             throw new IOException("知识库目录不存在: " + knowledgeDir);
@@ -108,6 +149,8 @@ public class RagService {
 
         knowledgeLoaded = true;
         System.out.println("知识库加载完成。\n");
+        
+        return textFiles;
     }
 
     /**
