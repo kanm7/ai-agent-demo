@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.zoujuexian.aiagentdemo.core.SubAgentManager;
 import com.zoujuexian.aiagentdemo.service.tool.InnerTool;
 import com.zoujuexian.aiagentdemo.service.tool.ToolCallbackBuilder;
+import com.zoujuexian.aiagentdemo.service.tool.ToolDomain;
 import jakarta.annotation.Resource;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
@@ -38,6 +39,11 @@ public class SubAgentTool implements InnerTool {
                 buildChatWithSubAgentCallback(),
                 buildDestroySubAgentCallback()
         );
+    }
+
+    @Override
+    public ToolDomain getDomain() {
+        return ToolDomain.SUB_AGENT;
     }
 
     /**

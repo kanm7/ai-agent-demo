@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.zoujuexian.aiagentdemo.service.tool.ToolCallbackBuilder;
 import com.zoujuexian.aiagentdemo.service.tool.InnerTool;
+import com.zoujuexian.aiagentdemo.service.tool.ToolDomain;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
 
@@ -32,6 +33,11 @@ public class GetStockPriceTool implements InnerTool {
                 List.of("symbol"),
                 this::execute
         ));
+    }
+
+    @Override
+    public ToolDomain getDomain() {
+        return ToolDomain.STOCK;
     }
 
     private String execute(String argumentsJson) {

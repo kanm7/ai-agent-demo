@@ -1,6 +1,7 @@
 package com.zoujuexian.aiagentdemo.core;
 
 import com.zoujuexian.aiagentdemo.service.tool.InnerTool;
+import com.zoujuexian.aiagentdemo.service.tool.ToolDomain;
 import com.zoujuexian.aiagentdemo.service.rag.RagService;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
@@ -23,6 +24,7 @@ import reactor.core.publisher.Flux;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,7 +41,13 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     /** 按 sessionId 隔离的对话记忆，支持多客户端并发 */
     private final Map<String, ChatMemory> sessionMemories = new ConcurrentHashMap<>();
     private String systemPromptText;
-    private final List<ToolCallback> toolCallbacks = new ArrayList<>();
+    
+    /** 按功能域分组的工具回调 */
+    private final Map<ToolDomain, List<ToolCallback>> domainTools = new ConcurrentHashMap<>();
+    
+    /** 所有工具的扁平列表（用于全量注册场景） */
+    private final List<ToolCallback> allToolCallbacks = new ArrayList<>();
+    
     private ApplicationContext applicationContext;
 
     @Resource
@@ -70,21 +78,30 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
         // 初始化 SubAgentManager，共享 ChatClient
         subAgentManager.setChatClient(chatClient);
 
-        // 自动发现所有 InnerTool Bean，统一加载 ToolCallback
+        // 自动发现所有 InnerTool Bean，按功能域分组加载 ToolCallback
         Collection<InnerTool> innerTools = applicationContext.getBeansOfType(InnerTool.class).values();
-        List<ToolCallback> allCallbacks = new ArrayList<>();
+        
         for (InnerTool tool : innerTools) {
             try {
-                allCallbacks.addAll(tool.loadToolCallbacks());
+                List<ToolCallback> callbacks = tool.loadToolCallbacks();
+                ToolDomain domain = tool.getDomain();
+                
+                // 按域分组存储
+                domainTools.computeIfAbsent(domain, k -> new ArrayList<>()).addAll(callbacks);
+                
+                // 同时加入全量列表
+                allToolCallbacks.addAll(callbacks);
+                
             } catch (Exception exception) {
                 System.err.println("[Tool] " + tool.getClass().getSimpleName() + " 加载失败: " + exception.getMessage());
             }
         }
 
-        registerToolCallbacks(allCallbacks);
-
         System.out.println("\n========================================");
-        System.out.println("  AI Agent 已就绪（已加载 " + allCallbacks.size() + " 个工具）");
+        System.out.println("  AI Agent 已就绪");
+        System.out.println("  工具分布:");
+        domainTools.forEach((domain, tools) -> 
+            System.out.println("    " + domain + ": " + tools.size() + " 个工具"));
         System.out.println("  HTTP API: POST /api/chat");
         System.out.println("  MCP 管理: GET/POST /api/mcp/*");
         System.out.println("========================================\n");
@@ -121,24 +138,56 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     }
 
     /**
-     * 批量注册工具回调
+     * 根据意图动态选择工具
+     * <p>
+     * 策略：基于意图映射到功能域，只返回相关领域的工具给 LLM。
+     * 如果没有匹配到特定域，返回全部工具以保证功能完整性。
+     *
+     * @param intent 识别出的用户意图
+     * @return 筛选后的工具列表
      */
-    public void registerToolCallbacks(List<ToolCallback> callbacks) {
-        toolCallbacks.addAll(callbacks);
+    private List<ToolCallback> selectToolsByIntent(Intent intent) {
+        // 基于意图映射到功能域
+        List<ToolDomain> relevantDomains = mapIntentToDomains(intent);
+        
+        List<ToolCallback> selectedTools = new ArrayList<>();
+        for (ToolDomain domain : relevantDomains) {
+            List<ToolCallback> domainToolsList = this.domainTools.get(domain);
+            if (domainToolsList != null) {
+                selectedTools.addAll(domainToolsList);
+            }
+        }
+        
+        // 如果没有匹配到特定域，返回全部工具
+        return selectedTools.isEmpty() ? allToolCallbacks : selectedTools;
     }
-
+    
     /**
-     * 批量注册工具回调
+     * 意图到功能域的映射规则
+     * <p>
+     * 根据意图类型决定需要暴露哪些功能域的工具给 LLM。
+     *
+     * @param intent 用户意图
+     * @return 相关的功能域列表
      */
-    public void registerToolCallbacks(ToolCallback... callbacks) {
-        toolCallbacks.addAll(Arrays.asList(callbacks));
-    }
-
-    /**
-     * 移除指定的工具回调
-     */
-    public void removeToolCallbacks(List<ToolCallback> callbacks) {
-        toolCallbacks.removeAll(callbacks);
+    private List<ToolDomain> mapIntentToDomains(Intent intent) {
+        switch (intent) {
+            case WEATHER:
+                return List.of(ToolDomain.WEATHER);
+            case FINANCE:
+                return List.of(ToolDomain.STOCK);
+            case RAG:
+                return List.of(ToolDomain.RAG);
+            case CODE_REVIEW:
+                // 代码审查可能需要代码工具和技能工具
+                return List.of(ToolDomain.CODE, ToolDomain.SKILL);
+            case SUB_TASK:
+                // 子任务可能需要 SubAgent 工具
+                return List.of(ToolDomain.SUB_AGENT);
+            default:
+                // 空列表表示使用全部工具
+                return Collections.emptyList();
+        }
     }
 
     /**
@@ -188,7 +237,7 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     /**
      * 与 Agent 对话
      * <p>
-     * 流程：意图识别 → 按需注入 RAG 上下文 → 大模型调用（含工具调用）
+     * 流程：意图识别 → 按需注入 RAG 上下文 → 动态选择工具 → 大模型调用（含工具调用）
      *
      * @param sessionId 会话 ID，用于隔离不同客户端的对话记忆
      * @param userInput 用户输入
@@ -214,14 +263,17 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
             memory.addMessage(new UserMessage(userInput));
         }
 
-        // 3. 构建 Prompt（带模型参数）并调用大模型（getMessages 内部自动触发摘要压缩）
+        // 3. 动态选择工具
+        List<ToolCallback> selectedTools = selectToolsByIntent(intent);
+
+        // 4. 构建 Prompt（带模型参数）并调用大模型（getMessages 内部自动触发摘要压缩）
         List<Message> messages = memory.getMessages();
         Prompt prompt = new Prompt(messages, buildChatOptions());
 
         ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt(prompt);
 
-        if (!toolCallbacks.isEmpty()) {
-            requestSpec.toolCallbacks(toolCallbacks.toArray(new ToolCallback[0])); // 把工具回调注册到请求中，toArray方法的参数的作用是指定数组的元素类型
+        if (!selectedTools.isEmpty()) {
+            requestSpec.toolCallbacks(selectedTools.toArray(new ToolCallback[0])); // 把工具回调注册到请求中，toArray方法的参数的作用是指定数组的元素类型
         }
 
         String response = requestSpec.call().content();
@@ -234,7 +286,7 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
     /**
      * 与 Agent 流式对话
      * <p>
-     * 流程与 chat() 相同（意图识别 → RAG 注入 → 大模型调用），
+     * 流程与 chat() 相同（意图识别 → RAG 注入 → 动态选择工具 → 大模型调用），
      * 但以 Flux 流式返回每个 token，同时在流结束后将完整响应存入记忆。
      *
      * @param sessionId 会话 ID
@@ -261,14 +313,17 @@ public class AgentCore implements InitializingBean , ApplicationContextAware {
             memory.addMessage(new UserMessage(userInput));
         }
 
-        // 3. 构建 Prompt（带模型参数）并流式调用大模型（getMessages 内部自动触发摘要压缩）
+        // 3. 动态选择工具
+        List<ToolCallback> selectedTools = selectToolsByIntent(intent);
+
+        // 4. 构建 Prompt（带模型参数）并流式调用大模型（getMessages 内部自动触发摘要压缩）
         List<Message> messages = memory.getMessages();
         Prompt prompt = new Prompt(messages, buildChatOptions());
 
         ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt(prompt);
 
-        if (!toolCallbacks.isEmpty()) {
-            requestSpec.toolCallbacks(toolCallbacks.toArray(new ToolCallback[0]));
+        if (!selectedTools.isEmpty()) {
+            requestSpec.toolCallbacks(selectedTools.toArray(new ToolCallback[0]));
         }
 
         StringBuilder fullResponse = new StringBuilder();

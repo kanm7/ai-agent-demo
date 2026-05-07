@@ -1,6 +1,7 @@
 package com.zoujuexian.aiagentdemo.service.tool.impl;
 
 import com.zoujuexian.aiagentdemo.service.tool.InnerTool;
+import com.zoujuexian.aiagentdemo.service.tool.ToolDomain;
 import com.zoujuexian.aiagentdemo.service.extrenal.McpClient;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.stereotype.Component;
@@ -47,5 +48,10 @@ public class McpTool implements InnerTool {
         }
 
         return allCallbacks;
+    }
+
+    @Override
+    public ToolDomain getDomain() {
+        return ToolDomain.MCP;
     }
 }

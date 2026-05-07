@@ -30,12 +30,56 @@ public class IntentRecognizerTest {
     @Test
     public void testRecognizeGeneralIntent() {
         // 测试应该识别为GENERAL意图的问题
+        String userInput = "你好";
+        String knowledgeTopics = "Java、Spring Boot、Maven、设计模式等技术文档";
+        
+        Intent intent = intentRecognizer.recognize(userInput, knowledgeTopics);
+        
+        assertEquals(Intent.GENERAL, intent, "闲聊应该被识别为GENERAL意图");
+    }
+
+    @Test
+    public void testRecognizeWeatherIntent() {
+        // 测试应该识别为WEATHER意图的问题
         String userInput = "今天天气怎么样？";
         String knowledgeTopics = "Java、Spring Boot、Maven、设计模式等技术文档";
         
         Intent intent = intentRecognizer.recognize(userInput, knowledgeTopics);
         
-        assertEquals(Intent.GENERAL, intent, "非技术问题应该被识别为GENERAL意图");
+        assertEquals(Intent.WEATHER, intent, "天气查询应该被识别为WEATHER意图");
+    }
+
+    @Test
+    public void testRecognizeFinanceIntent() {
+        // 测试应该识别为FINANCE意图的问题
+        String userInput = "AAPL的股价是多少？";
+        String knowledgeTopics = "Java、Spring Boot、Maven、设计模式等技术文档";
+        
+        Intent intent = intentRecognizer.recognize(userInput, knowledgeTopics);
+        
+        assertEquals(Intent.FINANCE, intent, "股票查询应该被识别为FINANCE意图");
+    }
+
+    @Test
+    public void testRecognizeCodeReviewIntent() {
+        // 测试应该识别为CODE_REVIEW意图的问题
+        String userInput = "帮我看看这段代码有什么问题";
+        String knowledgeTopics = "Java、Spring Boot、Maven、设计模式等技术文档";
+        
+        Intent intent = intentRecognizer.recognize(userInput, knowledgeTopics);
+        
+        assertEquals(Intent.CODE_REVIEW, intent, "代码审查请求应该被识别为CODE_REVIEW意图");
+    }
+
+    @Test
+    public void testRecognizeSubTaskIntent() {
+        // 测试应该识别为SUB_TASK意图的问题
+        String userInput = "创建一个代码审查专家来帮我review代码";
+        String knowledgeTopics = "Java、Spring Boot、Maven、设计模式等技术文档";
+        
+        Intent intent = intentRecognizer.recognize(userInput, knowledgeTopics);
+        
+        assertEquals(Intent.SUB_TASK, intent, "创建子代理请求应该被识别为SUB_TASK意图");
     }
 
     @Test

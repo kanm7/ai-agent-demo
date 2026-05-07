@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.zoujuexian.aiagentdemo.service.skill.SkillManager;
 import com.zoujuexian.aiagentdemo.service.tool.InnerTool;
 import com.zoujuexian.aiagentdemo.service.tool.ToolCallbackBuilder;
+import com.zoujuexian.aiagentdemo.service.tool.ToolDomain;
 import jakarta.annotation.Resource;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.tool.ToolCallback;
@@ -73,4 +74,8 @@ public class SkillTool implements InnerTool {
         return callbacks;
     }
 
+    @Override
+    public ToolDomain getDomain() {
+        return ToolDomain.SKILL;
+    }
 }
